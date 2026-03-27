@@ -402,6 +402,8 @@ void UAiBridgeSubsystem::SendStartAudioRequest(UNpcClientComponent* Npc)
 	ProcessingAudioRequestId = FGuid::NewGuid().ToString();
 	bIsProcessingAudioRequest = true;
 	
+	Npc->RequestIds.Add(ProcessingAudioRequestId);
+	
 	int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
 	
 	FChatMessage Message;
@@ -480,6 +482,9 @@ void UAiBridgeSubsystem::SendEndOfAudioRequest()
 void UAiBridgeSubsystem::SendTextRequest(const FString Text, UNpcClientComponent* Npc)
 {
 	FString RequestId = FGuid::NewGuid().ToString();
+	
+	Npc->RequestIds.Add(RequestId);
+	
 	int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
 	
 	FChatMessage Message;

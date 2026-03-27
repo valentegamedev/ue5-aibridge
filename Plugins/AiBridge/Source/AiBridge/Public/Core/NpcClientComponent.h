@@ -48,9 +48,14 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=NPC, meta = (AllowPrivateAccess = "true"))
 	TArray<FChatMessage> ChatMessages;
 	
+	
+	
 public:	
 	// Sets default values for this component's properties
 	UNpcClientComponent();
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=NPC, meta = (AllowPrivateAccess = "true"))
+	TSet<FString> RequestIds;
 
 protected:
 	// Called when the game starts
@@ -60,6 +65,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
+	UFUNCTION(BlueprintCallable)
 	void AddChatMessage(FChatMessage ChatMessage);
 	
 	UFUNCTION(BlueprintCallable)
