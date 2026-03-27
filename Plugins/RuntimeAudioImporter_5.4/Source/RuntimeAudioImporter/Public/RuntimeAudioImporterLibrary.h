@@ -101,9 +101,12 @@ public:
 	void ImportAudioFromBuffer(TArray<uint8> AudioData, ERuntimeAudioFormat AudioFormat);
 
 	UFUNCTION(BlueprintCallable, meta = (Keywords = "DownmixStereoToMono"), Category = "Runtime Audio Importer|Encode")
-	TArray<float> DownmixStereoToMono(TArray<float> AudioData);
-	TArray<float> Resample48kTo16k(const TArray<float> In);
-	TArray<int16> FloatToPCM16(const TArray<float> InSamples);
+	static TArray<float> DownmixStereoToMono(TArray<float> AudioData);
+	
+	UFUNCTION(BlueprintCallable, meta = (Keywords = "Resample48kTo16k"), Category = "Runtime Audio Importer|Encode")
+	static TArray<float> Resample48kTo16k(const TArray<float> In);
+	
+	static TArray<int16> FloatToPCM16(const TArray<float> InSamples);
 	
 	UFUNCTION(BlueprintCallable, meta = (Keywords = "EncodePCMToOpus"), Category = "Runtime Audio Importer|Encode")
 	void EncodePCMToOpus(const TArray<float> InPCM);

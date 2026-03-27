@@ -379,41 +379,14 @@ void UAiBridgeSubsystem::ProcessFakeBinaryData(TArray<uint8> Data)
 	WebSocket->OnBinaryMessage(Data);
 }
 
-void UAiBridgeSubsystem::SendSomething()
-{
-	TArray<TArray<uint8>> Chunks = {
-
-		// Chunk 1
-		{
-			72, 3, 153, 18, 31, 14, 108, 99, 205, 154, 177, 88,
-			20, 125, 37, 188, 23, 247, 28, 64
-		},
-
-		// Chunk 2
-		{
-			72, 13, 53, 188, 88, 59, 153, 77, 132, 251, 179, 64,
-			148, 192, 116, 29, 150, 15, 229, 170, 182, 98, 235, 250,
-			195, 248, 139, 243, 29, 214, 234, 22, 207, 148, 112
-		},
-
-		// Chunk 3
-		{
-			72, 128, 11, 175, 126, 19, 184, 64, 14, 119, 199, 235,
-			200, 63, 149, 7, 0, 114, 164, 139, 209, 18, 128, 79,
-			221, 35, 14, 251, 211, 246, 92, 132, 154, 38, 120, 200,
-			60, 158, 2, 217, 204, 94, 157, 196
-		}
-	};
-	
-	for (const TArray<uint8>& Chunk : Chunks)
-	{
-		WebSocket->SendBinary(Chunk);
-	}
-}
 
 void UAiBridgeSubsystem::SendStartAudioRequest()
 {
-	FString RequestId = FGuid::NewGuid().ToString();
+	if (bIsProcessingAudioRequest) return;
+	
+	ProcessingAudioRequestId = FGuid::NewGuid().ToString();
+	bIsProcessingAudioRequest = true;
+	
 	FString JsonString = FString::Printf(TEXT(R"(
 	{
 	  "languageCode" : "en-US",
@@ -424,7 +397,7 @@ void UAiBridgeSubsystem::SendStartAudioRequest()
 	    "timestamp" : 0.0
 	  } ],
 	  "type" : "SessionStart",
-	  "requestId" : "29d8dda2-878d-4ea6-b40c-f3b413110542",
+	  "requestId" : "%s",
 	  "timestamp" : null,
 	  "sttProvider" : "google",
 	  "audioFormat" : "opus",
@@ -448,39 +421,40 @@ void UAiBridgeSubsystem::SendStartAudioRequest()
 	  "ttsLanguageCode" : null,
 	  "contextCacheName" : null
 	}
-	)"));
-	WebSocket->SendText(JsonString);
+	)"), *ProcessingAudioRequestId);
 	
+	WebSocket->SendText(JsonString);
 }
 
 void UAiBridgeSubsystem::SendEndOfAudioRequest()
 {
-	FString RequestId = FGuid::NewGuid().ToString();
+
 	FString JsonString = FString::Printf(TEXT(R"(
         {
 		  "type" : "EndOfSpeech",
-		  "requestId" : "29d8dda2-878d-4ea6-b40c-f3b413110542",
+		  "requestId" : "%s",
 		  "timestamp" : null
 		}
-    )"));
+    )"), *ProcessingAudioRequestId);
+	
 	WebSocket->SendText(JsonString);
 	
 	JsonString = FString::Printf(TEXT(R"(
         {
 		  "type" : "EndOfAudio",
-		  "requestId" : "29d8dda2-878d-4ea6-b40c-f3b413110542",
+		  "requestId" : "%s",
 		  "timestamp" : null
 		}
-    )"));
+    )"), *ProcessingAudioRequestId);
 	WebSocket->SendText(JsonString);
 	
-	
+	bIsProcessingAudioRequest = false;
 }
 
 void UAiBridgeSubsystem::SendTextRequest(const FString Text)
 {
-	
 	FString RequestId = FGuid::NewGuid().ToString();
+	
 	FString JsonString = FString::Printf(TEXT(R"(
         {
           "type": "textinput",

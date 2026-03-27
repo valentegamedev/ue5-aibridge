@@ -77,6 +77,9 @@ private:
 	
 	void HandleOpusPages(uint32 Serial);
 	
+	bool bIsProcessingAudioRequest;
+	FString ProcessingAudioRequestId;
+	
 public:
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
 	void Connect(FString ApiKeyProvider, FString ApiBaseUrl);
@@ -88,9 +91,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
 	void ProcessFakeBinaryData(TArray<uint8> Data);
-	
-	UFUNCTION(BlueprintCallable, Category = "WebSocket")
-	void SendSomething();
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
 	void SendStartAudioRequest();
