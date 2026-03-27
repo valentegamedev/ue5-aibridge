@@ -3,6 +3,8 @@
 
 #include "Subsystems/AiBridgeSubsystem.h"
 #include "Authentication/JwtAuthenticationService.h"
+#include "Core/NpcClientComponent.h"
+#include "Structs/ChatMessage.h"
 #include "Util/OggOpusStreamParser.h"
 #include "WebSocket/WebSocketConnection.h"
 
@@ -176,6 +178,19 @@ void UAiBridgeSubsystem::HandleOnTextMessage(const FString& Msg)
 				if (JsonObject->TryGetStringField("text", Text))
 				{
 					OnAiResponse.Broadcast(RequestId, Text);
+				}
+			}
+			
+			if (JsonObject->TryGetStringField("type", Type) && Type == "Transcription")
+			{
+				bool bIsFinal;
+				if (JsonObject->TryGetBoolField("isFinal", bIsFinal) && bIsFinal)
+				{
+					FString Text;
+					if (JsonObject->TryGetStringField("text", Text))
+					{
+						OnTranscriptionComplete.Broadcast(RequestId, Text);
+					}
 				}
 			}
 		}
@@ -380,34 +395,44 @@ void UAiBridgeSubsystem::ProcessFakeBinaryData(TArray<uint8> Data)
 }
 
 
-void UAiBridgeSubsystem::SendStartAudioRequest()
+void UAiBridgeSubsystem::SendStartAudioRequest(UNpcClientComponent* Npc)
 {
 	if (bIsProcessingAudioRequest) return;
 	
 	ProcessingAudioRequestId = FGuid::NewGuid().ToString();
 	bIsProcessingAudioRequest = true;
 	
+	int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
+	
+	FChatMessage Message;
+	Message.Role = TEXT("system");
+	Message.Content = Npc->GetSystemPrompt();
+	
+	/*
+	*{
+	"role" : "system",
+	"content" : "You are a professional customer service agent for XRLab.\n\nCOMPANY INFORMATION:\nSaxion XRLab is a Mixed Reality lab which focus on innovation using VR and AR solutions.\n\nPRODUCT KNOWLEDGE:\nWe offer development services for any kind of media which needs VR or AR. Including development using Unity and Unreal.\n\nCUSTOMER CONTEXT:\n\"No customer context available.\"\n\nSERVICE GUIDELINES:\n1. Greet customers warmly and professionally\n2. Listen actively to understand the issue\n3. Provide accurate information from the knowledge base\n4. If you don't know something, say so and offer to escalate\n5. Always confirm the customer's issue is resolved before ending\n6. Keep responses concise but complete\n\nESCALATION TRIGGERS:\n- Technical issues beyond basic troubleshooting\n- Billing disputes over ${serviceConfig.escalationThreshold}\n- Complaints about employee conduct\n- Legal or compliance questions\n\nWhen escalating, explain why and what will happen next.",
+	"timestamp" : 0.0
+	} ]
+	*/
+	
 	FString JsonString = FString::Printf(TEXT(R"(
 	{
-	  "languageCode" : "en-US",
-	  "voiceId" : "EXAVITQu4vr4xnSDxMaL",
-	  "messages" : [ {
-	    "role" : "system",
-	    "content" : "You are a professional customer service agent for XRLab.\n\nCOMPANY INFORMATION:\nSaxion XRLab is a Mixed Reality lab which focus on innovation using VR and AR solutions.\n\nPRODUCT KNOWLEDGE:\nWe offer development services for any kind of media which needs VR or AR. Including development using Unity and Unreal.\n\nCUSTOMER CONTEXT:\n\"No customer context available.\"\n\nSERVICE GUIDELINES:\n1. Greet customers warmly and professionally\n2. Listen actively to understand the issue\n3. Provide accurate information from the knowledge base\n4. If you don't know something, say so and offer to escalate\n5. Always confirm the customer's issue is resolved before ending\n6. Keep responses concise but complete\n\nESCALATION TRIGGERS:\n- Technical issues beyond basic troubleshooting\n- Billing disputes over ${serviceConfig.escalationThreshold}\n- Complaints about employee conduct\n- Legal or compliance questions\n\nWhen escalating, explain why and what will happen next.",
-	    "timestamp" : 0.0
-	  } ],
+	  "languageCode" : "%s",
+	  "voiceId" : "%s",
+	  "messages" : %s,
 	  "type" : "SessionStart",
 	  "requestId" : "%s",
-	  "timestamp" : null,
-	  "sttProvider" : "google",
+	  "timestamp" : %lld,
+	  "sttProvider" : "%s",
 	  "audioFormat" : "opus",
 	  "sampleRate" : 16000,
 	  "opusBitrate" : 64000,
 	  "ttsStreamingMode" : "batch",
-	  "llmProvider" : "openai",
-	  "llmModel" : "gpt-4o-mini",
-	  "ttsModel" : "eleven_turbo_v2_5",
-	  "maxTokens" : 500,
+	  "llmProvider" : "%s",
+	  "llmModel" : "%s",
+	  "ttsModel" : "%s",
+	  "maxTokens" : %d,
 	  "temperature" : 0.7,
 	  "ttsOutputFormat" : "opus",
 	  "enableMetrics" : false,
@@ -418,11 +443,12 @@ void UAiBridgeSubsystem::SendStartAudioRequest()
 	  "voiceStyle" : 0.0,
 	  "voiceUseSpeakerBoost" : true,
 	  "voiceSpeed" : 1.0,
-	  "ttsLanguageCode" : null,
+	  "ttsLanguageCode" : "%s",
 	  "contextCacheName" : null
 	}
-	)"), *ProcessingAudioRequestId);
+	)"), *Npc->GetLanguageCode(), *Npc->GetVoiceId(), *Npc->GetChatMessagesWithSystemPromptAsJson(), *ProcessingAudioRequestId, Timestamp, *Npc->GetSttProvider(), *Npc->GetLlmProvider(), *Npc->GetLlmModel(), *Npc->GetTtsModel(), Npc->GetMaxTokens(), *Npc->GetLanguageCode());
 	
+	UE_LOG(LogTemp, Warning, TEXT("[%s] SendStartAudioRequest Json: %s"), *StaticClass()->GetName(), *JsonString);
 	WebSocket->SendText(JsonString);
 }
 
@@ -451,36 +477,36 @@ void UAiBridgeSubsystem::SendEndOfAudioRequest()
 	bIsProcessingAudioRequest = false;
 }
 
-void UAiBridgeSubsystem::SendTextRequest(const FString Text)
+void UAiBridgeSubsystem::SendTextRequest(const FString Text, UNpcClientComponent* Npc)
 {
 	FString RequestId = FGuid::NewGuid().ToString();
+	int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp() * 1000;
+	
+	FChatMessage Message;
+	Message.Role = TEXT("user");
+	Message.Content = Text;
+	
+	Npc->AddChatMessage(Message);
 	
 	FString JsonString = FString::Printf(TEXT(R"(
         {
           "type": "textinput",
           "text": "%s",
           "requestId": "%s",
-          "timestamp":1771596968241,
+          "timestamp":%lld,
           "isNpcInitiated": false,
           "context": {
             "systemPrompt": "You are a professional customer service agent for XRLab.\n\nCOMPANY INFORMATION:\nSaxion XRLab is a Mixed Reality lab which focus on innovation using VR and AR solutions.\n\nPRODUCT KNOWLEDGE:\nWe offer development services for any kind of media which needs VR or AR. Including development using Unity and Unreal.\n\nCUSTOMER CONTEXT:\n\"No customer context available.\"\n\nSERVICE GUIDELINES:\n1. Greet customers warmly and professionally\n2. Listen actively to understand the issue\n3. Provide accurate information from the knowledge base\n4. If you don't know something, say so and offer to escalate\n5. Always confirm the customer's issue is resolved before ending\n6. Keep responses concise but complete\n\nESCALATION TRIGGERS:\n- Technical issues beyond basic troubleshooting\n- Billing disputes over ${serviceConfig.escalationThreshold}\n- Complaints about employee conduct\n- Legal or compliance questions\n\nWhen escalating, explain why and what will happen next.",
-            "messages": [{
-                "role": "user",
-                "content": "Hi there! my name is Daniel"
-              },
-              {
-                "role": "assistant",
-                "content": "Hello traveler! What brings you here?"
-              }],
-            "voiceId": "EXAVITQu4vr4xnSDxMaL",
-            "llmModel": "gpt-4o-mini",
-            "llmProvider": "openai",
+            "messages": %s,
+            "voiceId": "%s",
+            "llmModel": "%s",
+            "llmProvider": "%s",
             "temperature": 0.7,
-            "maxTokens": 500,
-            "language": "en-US",
+            "maxTokens": %d,
+            "language": "%s",
             "ttsStreamingMode": "batch",
-            "ttsModel": "eleven_turbo_v2_5",
-            "sttProvider": "google",
+            "ttsModel": "%s",
+            "sttProvider": "%s",
 
             "voiceStability": 0.5,
             "voiceSimilarityBoost": 0.75,
@@ -495,7 +521,9 @@ void UAiBridgeSubsystem::SendTextRequest(const FString Text)
             "contextCacheName": "projects/my-project/locations/europe-west4/cachedContents/abc123"
           }
         }
-    )"), *Text, *RequestId);
+    )"), *Text, *RequestId, Timestamp, *Npc->GetChatMessagesAsJson() ,*Npc->GetVoiceId(), *Npc->GetLlmModel(), *Npc->GetLlmProvider(), Npc->GetMaxTokens(), *Npc->GetLanguageCode(), *Npc->GetTtsModel(), *Npc->GetSttProvider());
+	
+	UE_LOG(LogTemp, Warning, TEXT("[%s] SendTextRequest Json: %s"), *StaticClass()->GetName(), *JsonString);
 	WebSocket->SendText(JsonString);
 }
 

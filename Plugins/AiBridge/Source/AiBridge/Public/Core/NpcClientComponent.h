@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "NpcClientComponent.generated.h"
 
-
+struct FChatMessage;
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AIBRIDGE_API UNpcClientComponent : public UActorComponent
 {
@@ -45,6 +45,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category=NPC, meta = (AllowPrivateAccess = "true"))
 	FString SystemPrompt;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=NPC, meta = (AllowPrivateAccess = "true"))
+	TArray<FChatMessage> ChatMessages;
+	
 public:	
 	// Sets default values for this component's properties
 	UNpcClientComponent();
@@ -56,6 +59,15 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
+	void AddChatMessage(FChatMessage ChatMessage);
+	
+	UFUNCTION(BlueprintCallable)
+	FString GetChatMessagesAsJson() const;
+	
+
+	FString GetChatMessagesWithSystemPromptAsJson() const;
+	
 public:
 	FString GetSttProvider() const
 	{

@@ -3,6 +3,8 @@
 
 #include "Core/NpcClientComponent.h"
 
+#include "Structs/ChatMessage.h"
+
 // Sets default values for this component's properties
 UNpcClientComponent::UNpcClientComponent()
 {
@@ -39,3 +41,55 @@ void UNpcClientComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	// ...
 }
 
+void UNpcClientComponent::AddChatMessage(FChatMessage ChatMessage)
+{
+	ChatMessages.Add(ChatMessage);
+}
+
+FString UNpcClientComponent::GetChatMessagesAsJson() const
+{
+	TArray<TSharedPtr<FJsonValue>> JsonArray;
+
+	for (const FChatMessage& Msg : ChatMessages)
+	{
+		TSharedPtr<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+		JsonObject->SetStringField(TEXT("role"), Msg.Role);
+		JsonObject->SetStringField(TEXT("content"), Msg.Content);
+
+		JsonArray.Add(MakeShared<FJsonValueObject>(JsonObject));
+	}
+
+	// Convert array to string
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	FJsonSerializer::Serialize(JsonArray, Writer);
+
+	return OutputString;
+}
+
+FString UNpcClientComponent::GetChatMessagesWithSystemPromptAsJson() const
+{
+	TArray<TSharedPtr<FJsonValue>> JsonArray;
+	
+	TArray<FChatMessage> ChatMessagesClone = ChatMessages;
+	FChatMessage Message;
+	Message.Role = TEXT("system");
+	Message.Content = SystemPrompt;
+	ChatMessagesClone.Insert(Message, 0);
+
+	for (const FChatMessage& Msg : ChatMessagesClone)
+	{
+		TSharedPtr<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+		JsonObject->SetStringField(TEXT("role"), Msg.Role);
+		JsonObject->SetStringField(TEXT("content"), Msg.Content);
+
+		JsonArray.Add(MakeShared<FJsonValueObject>(JsonObject));
+	}
+
+	// Convert array to string
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	FJsonSerializer::Serialize(JsonArray, Writer);
+
+	return OutputString;
+}

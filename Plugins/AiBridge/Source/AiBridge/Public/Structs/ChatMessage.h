@@ -10,6 +10,9 @@ struct FChatMessage
 {
 	GENERATED_BODY()
 
-	UPROPERTY() FString Role;
-	UPROPERTY() FString Content;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Role;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Content;
 };

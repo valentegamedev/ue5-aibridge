@@ -6,10 +6,12 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "AiBridgeSubsystem.generated.h"
 
+class UNpcClientComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnConnected);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDisconnected);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTextMessage, const FString&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAiResponse, const FString&, RequestId, const FString&, Message);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnTranscriptionComplete, const FString&, RequestId, const FString&, Message);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBinaryMessage, const TArray<uint8>&, Data);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOpusData, const TArray<uint8>&, Data);
 
@@ -64,6 +66,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "WebSocket")
 	FOnAiResponse OnAiResponse;
 	
+	UPROPERTY(BlueprintAssignable, Category = "WebSocket")
+	FOnTranscriptionComplete OnTranscriptionComplete;
+	
 private:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
@@ -93,13 +98,13 @@ public:
 	void ProcessFakeBinaryData(TArray<uint8> Data);
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
-	void SendStartAudioRequest();
+	void SendStartAudioRequest(UNpcClientComponent* Npc);
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
 	void SendEndOfAudioRequest();
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
-	void SendTextRequest(const FString Text);
+	void SendTextRequest(const FString Text, UNpcClientComponent* Npc);
 	
 	UFUNCTION(BlueprintCallable, Category = "WebSocket")
 	void SendBinaryRequest(const TArray<uint8> Bytes);
