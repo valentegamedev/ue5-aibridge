@@ -108,6 +108,9 @@ public:
 	
 	static TArray<int16> FloatToPCM16(const TArray<float> InSamples);
 	
+	UFUNCTION(BlueprintCallable, meta = (Keywords = "ConvertFloatPCMToBinaryPCM16"), Category = "Runtime Audio Importer|Encode")
+	static TArray<uint8> ConvertFloatPCMToBinaryPCM16(const TArray<float>& InFloatSamples);
+	
 	UFUNCTION(BlueprintCallable, meta = (Keywords = "EncodePCMToOpus"), Category = "Runtime Audio Importer|Encode")
 	void EncodePCMToOpus(const TArray<float> InPCM);
 	

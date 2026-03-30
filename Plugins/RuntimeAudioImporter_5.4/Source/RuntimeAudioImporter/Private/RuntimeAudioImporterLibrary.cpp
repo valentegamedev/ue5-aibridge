@@ -131,6 +131,27 @@ TArray<int16> URuntimeAudioImporterLibrary::FloatToPCM16(const TArray<float> InS
     return PCM16;
 }
 
+TArray<uint8> URuntimeAudioImporterLibrary::ConvertFloatPCMToBinaryPCM16(const TArray<float>& InFloatSamples)
+{
+	TArray<uint8> OutPCM16;
+	OutPCM16.Reserve(InFloatSamples.Num() * 2);
+
+	for (float Sample : InFloatSamples)
+	{
+		// Clamp to valid range
+		float Clamped = FMath::Clamp(Sample, -1.0f, 1.0f);
+
+		// Convert to int16
+		int16 IntSample = static_cast<int16>(Clamped * 32767.0f);
+
+		// Write as little-endian bytes
+		OutPCM16.Add(static_cast<uint8>(IntSample & 0xFF));        // Low byte
+		OutPCM16.Add(static_cast<uint8>((IntSample >> 8) & 0xFF)); // High byte
+	}
+
+	return OutPCM16;
+}
+
 
 void URuntimeAudioImporterLibrary::EncodePCMToOpus(const TArray<float> InPCM)
 {
